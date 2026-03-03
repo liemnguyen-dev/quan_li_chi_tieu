@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>Sổ Chi Tiêu Thông Minh + QR Share</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    
+    <style>
+        :root { --primary: #1a73e8; --danger: #d93025; --success: #188038; }
+        body { font-family: 'Segoe UI', sans-serif; background-color: #f8f9fa; display: flex; justify-content: center; padding: 20px; }
+        .container { background: white; padding: 25px; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); width: 100%; max-width: 500px; }
+        h2 { color: var(--primary); text-align: center; margin-bottom: 20px; }
+        
+        .input-group { margin-bottom: 12px; }
+        label { display: block; margin-bottom: 5px; font-weight: 600; color: #3c4043; font-size: 14px; }
+        input, select { width: 100%; padding: 12px; border: 1px solid #dadce0; border-radius: 8px; box-sizing: border-box; }
+
+        .btn-group { display: flex; gap: 8px; margin: 20px 0; }
+        button { flex: 1; padding: 12px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; transition: 0.2s; }
+        .btn-add { background-color: var(--primary); color: white; }
+        .btn-pdf { background-color: #f1f3f4; color: #3c4043; }
+        .btn-clear { background-color: #feeef3; color: var(--danger); flex: 0.4; }
+
+        .status { padding: 15px; border-radius: 12px; text-align: center; font-weight: bold; margin-bottom: 20px; }
+        .normal { background-color: #e6f4ea; color: var(--success); }
+        .warning { background-color: #fce8e6; color: var(--danger); border: 2px solid var(--danger); }
+
+        /* Khu vực QR */
+        .qr-section { margin-top: 30px; padding: 20px; border-top: 2px dashed #eee; text-align: center; background: #fafafa; border-radius: 12px; }
+        #qrcode { display: flex; justify-content: center; margin: 15px 0; }
+        
+        ul { list-style: none; padding: 0; max-height: 150px; overflow-y: auto; }
+        li { padding: 10px; border-bottom: 1px solid #f8f9fa; display: flex; justify-content: space-between; font-size: 14px; }
+        .cat-tag { font-size: 10px; background: #e8f0fe; padding: 3px 8px; border-radius: 12px; color: var(--primary); margin-right: 8px; }
+    </style>
+</head>
+<body onload="loadData(); generateQR();">
+
+<div class="container">
+    <h2>📓 Sổ Chi Tiêu Học Sinh</h2>
+    
+    <div class="input-group">
+        <label>Ngân sách tuần (VNĐ):</label>
+        <input type="number" id="budgetInput" value="500000" onchange="updateUI(); saveData();">
+    </div>
+
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+        <div class="input-group">
+            <input type="text" id="itemName" placeholder="Tên món đồ">
+        </div>
+        <div class="input-group">
+            <select id="itemCategory">
+                <option value="Ăn uống">🍎 Ăn uống</option>
+                <option value="Học tập">📚 Học tập</option>
+                <option value="Giải trí">🎮 Giải trí</option>
+                <option value="Khác">✨ Khác</option>
+            </select>
+        </div>
+    </div>
+    
+    <input type="number" id="itemPrice" placeholder="Số tiền (VNĐ)" style="margin-bottom: 10px;">
+
+    <div class="btn-group">
+        <button class="btn-add" onclick="addItem()">➕ Thêm</button>
+        <button class="btn-pdf" onclick="exportPDF()">📄 PDF</button>
+        <button class="btn-clear" onclick="clearData()">🗑️</button>
+    </div>
+
+    <div id="statusBox" class="status normal">Số dư: 0 VNĐ</div>
+    <canvas id="categoryChart"></canvas>
+
+    <ul id="itemList"></ul>
+
+    <div class="qr-section">
+        <strong>📲 Chia sẻ ứng dụng cho bạn bè</strong>
+        <div id="qrcode"></div>
+        <p style="font-size: 11px; color: #888;">Quét mã để mở sổ chi tiêu trên điện thoại</p>
+    </div>
+</div>
+
+<script>
+    // [Giữ nguyên các biến và hàm logic từ phiên bản trước...]
+    let totalBudget = 500000;
+    let totals = { "Ăn uống": 0, "Học tập": 0, "Giải trí": 0, "Khác": 0 };
+    let items = [];
+    let myChart;
+    const alertSound = new Audio('https://www.soundjay.com/buttons/beep-01a.mp3');
+
+    // Khởi tạo Chart
+    const ctx = document.getElementById('categoryChart').getContext('2d');
+    myChart = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: ['Còn lại', 'Ăn uống', 'Học tập', 'Giải trí', 'Khác'],
+            datasets: [{
+                data: [0, 0, 0, 0, 0],
+                backgroundColor: ['#34a853', '#ea4335', '#4285f4', '#fbbc05', '#9aa0a6']
+            }]
+        }
+    });
+
+    // MỚI: Hàm tạo mã QR
+    function generateQR() {
+        const qrContainer = document.getElementById("qrcode");
+        qrContainer.innerHTML = ""; // Xóa QR cũ nếu có
+        new QRCode(qrContainer, {
+            text: window.location.href, // Lấy link hiện tại
+            width: 128,
+            height: 128,
+            colorDark : "#1a73e8",
+            colorLight : "#ffffff",
+        });
+    }
+
+    function addItem() {
+        const name = document.getElementById('itemName').value;
+        const price = parseFloat(document.getElementById('itemPrice').value);
+        const category = document.getElementById('itemCategory').value;
+        if (!name || isNaN(price)) return;
+        const newItem = { name, price, category };
+        items.push(newItem);
+        totals[category] += price;
+        renderItem(newItem);
+        updateUI();
+        saveData();
+        document.getElementById('itemName').value = "";
+        document.getElementById('itemPrice').value = "";
+    }
+
+    function renderItem(item) {
+        const li = document.createElement('li');
+        li.innerHTML = `<span><span class="cat-tag">${item.category}</span>${item.name}</span> <b>-${item.price.toLocaleString()}đ</b>`;
+        document.getElementById('itemList').prepend(li);
+    }
+
+    function updateUI() {
+        totalBudget = parseFloat(document.getElementById('budgetInput').value) || 0;
+        let totalSpent = Object.values(totals).reduce((a, b) => a + b, 0);
+        let balance = totalBudget - totalSpent;
+        const statusBox = document.getElementById('statusBox');
+        statusBox.innerText = `Số dư: ${balance.toLocaleString()} VNĐ`;
+        if (balance < 0) {
+            statusBox.className = "status warning";
+            alertSound.play();
+        } else {
+            statusBox.className = "status normal";
+        }
+        myChart.data.datasets[0].data = [balance < 0 ? 0 : balance, totals["Ăn uống"], totals["Học tập"], totals["Giải trí"], totals["Khác"]];
+        myChart.update();
+    }
+
+    function saveData() {
+        localStorage.setItem('budgetAppData', JSON.stringify({ budget: totalBudget, items, totals }));
+    }
+
+    function loadData() {
+        const saved = localStorage.getItem('budgetAppData');
+        if (saved) {
+            const data = JSON.parse(saved);
+            items = data.items;
+            totals = data.totals;
+            document.getElementById('budgetInput').value = data.budget;
+            items.forEach(renderItem);
+            updateUI();
+        }
+    }
+
+    function clearData() {
+        if(confirm("Xóa hết dữ liệu?")) { localStorage.removeItem('budgetAppData'); location.reload(); }
+    }
+
+    function exportPDF() {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF();
+        doc.text("SO CHI TIEU", 20, 20);
+        items.forEach((item, i) => doc.text(`${i+1}. ${item.name}: -${item.price} VND`, 20, 40 + (i*10)));
+        doc.save("Bao_cao.pdf");
+    }
+</script>
+
+</body>
+</html>
