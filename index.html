@@ -2,183 +2,182 @@
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
-    <title>Sổ Chi Tiêu Thông Minh + QR Share</title>
+    <title>App Quản Lý Tài Chính Học Sinh - Bản Đặc Biệt</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     
     <style>
-        :root { --primary: #1a73e8; --danger: #d93025; --success: #188038; }
-        body { font-family: 'Segoe UI', sans-serif; background-color: #f8f9fa; display: flex; justify-content: center; padding: 20px; }
-        .container { background: white; padding: 25px; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); width: 100%; max-width: 500px; }
-        h2 { color: var(--primary); text-align: center; margin-bottom: 20px; }
+        :root { --primary: #1a73e8; --gold: #fbc02d; --danger: #d93025; }
+        body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; display: flex; justify-content: center; padding: 20px; }
+        .container { background: white; padding: 25px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); width: 100%; max-width: 550px; }
+        h2 { color: var(--primary); text-align: center; }
+        .input-box { margin-bottom: 15px; }
+        label { font-weight: bold; font-size: 14px; display: block; margin-bottom: 5px; }
+        input, select { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 10px; box-sizing: border-box; }
         
-        .input-group { margin-bottom: 12px; }
-        label { display: block; margin-bottom: 5px; font-weight: 600; color: #3c4043; font-size: 14px; }
-        input, select { width: 100%; padding: 12px; border: 1px solid #dadce0; border-radius: 8px; box-sizing: border-box; }
-
-        .btn-group { display: flex; gap: 8px; margin: 20px 0; }
-        button { flex: 1; padding: 12px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; transition: 0.2s; }
-        .btn-add { background-color: var(--primary); color: white; }
-        .btn-pdf { background-color: #f1f3f4; color: #3c4043; }
-        .btn-clear { background-color: #feeef3; color: var(--danger); flex: 0.4; }
-
-        .status { padding: 15px; border-radius: 12px; text-align: center; font-weight: bold; margin-bottom: 20px; }
-        .normal { background-color: #e6f4ea; color: var(--success); }
-        .warning { background-color: #fce8e6; color: var(--danger); border: 2px solid var(--danger); }
-
-        /* Khu vực QR */
-        .qr-section { margin-top: 30px; padding: 20px; border-top: 2px dashed #eee; text-align: center; background: #fafafa; border-radius: 12px; }
-        #qrcode { display: flex; justify-content: center; margin: 15px 0; }
+        .btn-group { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 20px 0; }
+        button { padding: 12px; border: none; border-radius: 10px; cursor: pointer; font-weight: bold; transition: 0.3s; }
+        .btn-add { background: var(--primary); color: white; grid-column: span 2; }
+        .btn-summary { background: var(--gold); color: black; }
+        .btn-cert { background: #34a853; color: white; display: none; } /* Chỉ hiện khi thắng */
         
-        ul { list-style: none; padding: 0; max-height: 150px; overflow-y: auto; }
-        li { padding: 10px; border-bottom: 1px solid #f8f9fa; display: flex; justify-content: space-between; font-size: 14px; }
-        .cat-tag { font-size: 10px; background: #e8f0fe; padding: 3px 8px; border-radius: 12px; color: var(--primary); margin-right: 8px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 13px; }
+        th, td { border: 1px solid #eee; padding: 8px; text-align: left; }
+        .over { color: var(--danger); font-weight: bold; }
+        #adviceBox { margin-top: 15px; padding: 12px; border-radius: 10px; background: #fff5f5; border-left: 5px solid var(--danger); display: none; }
     </style>
 </head>
-<body onload="loadData(); generateQR();">
+<body onload="initApp()">
 
 <div class="container">
-    <h2>📓 Sổ Chi Tiêu Học Sinh</h2>
+    <h2>💰 Quản Lý Tài Chính Tài Ba</h2>
     
-    <div class="input-group">
+    <div class="input-box">
         <label>Ngân sách tuần (VNĐ):</label>
-        <input type="number" id="budgetInput" value="500000" onchange="updateUI(); saveData();">
+        <input type="number" id="budgetInput" value="500000" onchange="updateUI()">
     </div>
 
     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-        <div class="input-group">
-            <input type="text" id="itemName" placeholder="Tên món đồ">
-        </div>
-        <div class="input-group">
-            <select id="itemCategory">
-                <option value="Ăn uống">🍎 Ăn uống</option>
-                <option value="Học tập">📚 Học tập</option>
-                <option value="Giải trí">🎮 Giải trí</option>
-                <option value="Khác">✨ Khác</option>
-            </select>
-        </div>
+        <select id="ruleSelect" onchange="applyRule()">
+            <option value="6jars">Quy tắc 6 Chiếc lọ</option>
+            <option value="502030">Quy tắc 50-20-30</option>
+        </select>
+        <select id="itemCategory"></select>
     </div>
-    
-    <input type="number" id="itemPrice" placeholder="Số tiền (VNĐ)" style="margin-bottom: 10px;">
+
+    <div class="input-box" style="margin-top: 10px;">
+        <input type="text" id="itemName" placeholder="Tên món đồ (VD: Bánh mì)">
+        <input type="number" id="itemPrice" placeholder="Số tiền (VNĐ)" style="margin-top: 10px;">
+    </div>
 
     <div class="btn-group">
-        <button class="btn-add" onclick="addItem()">➕ Thêm</button>
-        <button class="btn-pdf" onclick="exportPDF()">📄 PDF</button>
-        <button class="btn-clear" onclick="clearData()">🗑️</button>
+        <button class="btn-add" onclick="addItem()">➕ Thêm khoản chi</button>
+        <button class="btn-summary" onclick="summarize()">🏆 Tổng kết tuần</button>
+        <button id="certBtn" class="btn-cert" onclick="generateCertificate()">🎓 Nhận Chứng Chỉ</button>
     </div>
 
-    <div id="statusBox" class="status normal">Số dư: 0 VNĐ</div>
-    <canvas id="categoryChart"></canvas>
-
-    <ul id="itemList"></ul>
-
-    <div class="qr-section">
-        <strong>📲 Chia sẻ ứng dụng cho bạn bè</strong>
-        <div id="qrcode"></div>
-        <p style="font-size: 11px; color: #888;">Quét mã để mở sổ chi tiêu trên điện thoại</p>
+    <div id="adviceBox">
+        <small>💡 <b>Lời khuyên:</b> <span id="adviceText"></span></small>
     </div>
+
+    <canvas id="myChart" style="max-height: 200px; margin-top: 15px;"></canvas>
+
+    <table>
+        <thead><tr><th>Hạng mục</th><th>Định mức</th><th>Đã chi</th><th>Còn lại</th></tr></thead>
+        <tbody id="ruleBody"></tbody>
+    </table>
 </div>
 
 <script>
-    // [Giữ nguyên các biến và hàm logic từ phiên bản trước...]
-    let totalBudget = 500000;
-    let totals = { "Ăn uống": 0, "Học tập": 0, "Giải trí": 0, "Khác": 0 };
-    let items = [];
+    let rules = {
+        "6jars": {"Thiết yếu": 0.55, "Đầu tư": 0.1, "Tiết kiệm": 0.1, "Hưởng thụ": 0.1, "Giáo dục": 0.1, "Từ thiện": 0.05},
+        "502030": {"Thiết yếu": 0.5, "Tài chính": 0.2, "Cá nhân": 0.3}
+    };
+    let currentSpent = {};
     let myChart;
-    const alertSound = new Audio('https://www.soundjay.com/buttons/beep-01a.mp3');
 
-    // Khởi tạo Chart
-    const ctx = document.getElementById('categoryChart').getContext('2d');
-    myChart = new Chart(ctx, {
-        type: 'doughnut',
-        data: {
-            labels: ['Còn lại', 'Ăn uống', 'Học tập', 'Giải trí', 'Khác'],
-            datasets: [{
-                data: [0, 0, 0, 0, 0],
-                backgroundColor: ['#34a853', '#ea4335', '#4285f4', '#fbbc05', '#9aa0a6']
-            }]
-        }
-    });
+    function initApp() {
+        const ctx = document.getElementById('myChart').getContext('2d');
+        myChart = new Chart(ctx, { type: 'bar', data: { labels: [], datasets: [{ label: 'Đã tiêu', data: [], backgroundColor: '#4285f4' }] } });
+        applyRule();
+    }
 
-    // MỚI: Hàm tạo mã QR
-    function generateQR() {
-        const qrContainer = document.getElementById("qrcode");
-        qrContainer.innerHTML = ""; // Xóa QR cũ nếu có
-        new QRCode(qrContainer, {
-            text: window.location.href, // Lấy link hiện tại
-            width: 128,
-            height: 128,
-            colorDark : "#1a73e8",
-            colorLight : "#ffffff",
-        });
+    function applyRule() {
+        const selected = document.getElementById('ruleSelect').value;
+        const cats = Object.keys(rules[selected]);
+        currentSpent = {};
+        cats.forEach(c => currentSpent[c] = 0);
+        document.getElementById('itemCategory').innerHTML = cats.map(c => `<option value="${c}">${c}</option>`).join('');
+        updateUI();
     }
 
     function addItem() {
         const name = document.getElementById('itemName').value;
         const price = parseFloat(document.getElementById('itemPrice').value);
-        const category = document.getElementById('itemCategory').value;
+        const cat = document.getElementById('itemCategory').value;
         if (!name || isNaN(price)) return;
-        const newItem = { name, price, category };
-        items.push(newItem);
-        totals[category] += price;
-        renderItem(newItem);
+        currentSpent[cat] += price;
         updateUI();
-        saveData();
         document.getElementById('itemName').value = "";
         document.getElementById('itemPrice').value = "";
     }
 
-    function renderItem(item) {
-        const li = document.createElement('li');
-        li.innerHTML = `<span><span class="cat-tag">${item.category}</span>${item.name}</span> <b>-${item.price.toLocaleString()}đ</b>`;
-        document.getElementById('itemList').prepend(li);
-    }
-
     function updateUI() {
-        totalBudget = parseFloat(document.getElementById('budgetInput').value) || 0;
-        let totalSpent = Object.values(totals).reduce((a, b) => a + b, 0);
-        let balance = totalBudget - totalSpent;
-        const statusBox = document.getElementById('statusBox');
-        statusBox.innerText = `Số dư: ${balance.toLocaleString()} VNĐ`;
-        if (balance < 0) {
-            statusBox.className = "status warning";
-            alertSound.play();
+        const budget = parseFloat(document.getElementById('budgetInput').value) || 0;
+        const selected = document.getElementById('ruleSelect').value;
+        const ruleData = rules[selected];
+        const tbody = document.getElementById('ruleBody');
+        tbody.innerHTML = "";
+        let labels = [], data = [], over = false;
+
+        for (let cat in ruleData) {
+            let limit = budget * ruleData[cat], spent = currentSpent[cat], rem = limit - spent;
+            if (rem < 0) over = true;
+            tbody.innerHTML += `<tr><td>${cat}</td><td>${limit.toLocaleString()}</td><td>${spent.toLocaleString()}</td><td class="${rem<0?'over':''}">${rem.toLocaleString()}</td></tr>`;
+            labels.push(cat); data.push(spent);
+        }
+        myChart.data.labels = labels; myChart.data.datasets[0].data = data; myChart.update();
+        document.getElementById('adviceBox').style.display = over ? "block" : "none";
+        document.getElementById('adviceText').innerText = "Bạn đang chi quá mức, hãy cân nhắc cắt giảm hạng mục màu đỏ!";
+    }
+
+    function summarize() {
+        let over = Array.from(document.querySelectorAll('.over')).length > 0;
+        if (!over && Object.values(currentSpent).some(v => v > 0)) {
+            confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } });
+            document.getElementById('certBtn').style.display = "block";
+            alert("Tuyệt vời! Bạn không vi phạm định mức nào. Nút 'Nhận Chứng Chỉ' đã xuất hiện!");
         } else {
-            statusBox.className = "status normal";
-        }
-        myChart.data.datasets[0].data = [balance < 0 ? 0 : balance, totals["Ăn uống"], totals["Học tập"], totals["Giải trí"], totals["Khác"]];
-        myChart.update();
-    }
-
-    function saveData() {
-        localStorage.setItem('budgetAppData', JSON.stringify({ budget: totalBudget, items, totals }));
-    }
-
-    function loadData() {
-        const saved = localStorage.getItem('budgetAppData');
-        if (saved) {
-            const data = JSON.parse(saved);
-            items = data.items;
-            totals = data.totals;
-            document.getElementById('budgetInput').value = data.budget;
-            items.forEach(renderItem);
-            updateUI();
+            alert("Hãy cố gắng cân đối chi tiêu để không bị âm tiền nhé!");
         }
     }
 
-    function clearData() {
-        if(confirm("Xóa hết dữ liệu?")) { localStorage.removeItem('budgetAppData'); location.reload(); }
-    }
-
-    function exportPDF() {
+    // --- HÀM TẠO CHỨNG CHỈ PDF ---
+    function generateCertificate() {
         const { jsPDF } = window.jspdf;
-        const doc = new jsPDF();
-        doc.text("SO CHI TIEU", 20, 20);
-        items.forEach((item, i) => doc.text(`${i+1}. ${item.name}: -${item.price} VND`, 20, 40 + (i*10)));
-        doc.save("Bao_cao.pdf");
+        const doc = new jsPDF({ orientation: "landscape" });
+        const name = prompt("Nhập họ và tên của em để in lên chứng chỉ:", "Nguyễn Văn A");
+        if (!name) return;
+
+        // Vẽ khung viền
+        doc.setLineWidth(5);
+        doc.setDrawColor(26, 115, 232);
+        doc.rect(10, 10, 277, 190); 
+
+        // Tiêu đề
+        doc.setTextColor(26, 115, 232);
+        doc.setFontSize(30);
+        doc.text("CHUNG CHI QUAN LY TAI CHINH", 148, 50, { align: "center" });
+
+        // Nội dung vinh danh
+        doc.setTextColor(0, 0, 0);
+        doc.setFontSize(18);
+        doc.text("Chuc mung nha quan ly tai ba:", 148, 80, { align: "center" });
+        
+        doc.setFontSize(25);
+        doc.setTextColor(217, 48, 37);
+        doc.text(name.toUpperCase(), 148, 100, { align: "center" });
+
+        doc.setFontSize(16);
+        doc.setTextColor(0, 0, 0);
+        doc.text("Da hoan thanh xuat sac ke hoach chi tieu tuan ma khong vi pham dinh muc.", 148, 125, { align: "center" });
+        doc.text(`Quy tac ap dung: ${document.getElementById('ruleSelect').options[document.getElementById('ruleSelect').selectedIndex].text}`, 148, 140, { align: "center" });
+
+        // Con dấu giả định
+        doc.setDrawColor(251, 192, 45);
+        doc.setLineWidth(2);
+        doc.circle(240, 160, 20);
+        doc.setFontSize(10);
+        doc.text("GOLD SEAL", 240, 162, { align: "center" });
+
+        // Ngày tháng
+        const date = new Date().toLocaleDateString('vi-VN');
+        doc.text(`Ngay cap: ${date}`, 40, 175);
+
+        // Lưu file
+        doc.save(`Chung_Chi_Tai_Chinh_${name}.pdf`);
     }
 </script>
-
 </body>
 </html>
